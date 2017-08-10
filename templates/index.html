@@ -1,6 +1,7 @@
 <html>
 <head>
 <script src="https://d3js.org/d3.v4.min.js"></script>
+
 <style>
 #main{
   background-color: #eee;
@@ -14,74 +15,108 @@
 <p>select exp</p>
 <p>select chr or all chr</p>
 <p>scale slider</p>
-<p>binsize</p>
+
+<input id='sBinSize' type='range' min=5 max=20000 step=5 
+       onchange="showBinSize(this.value)"/>
+<p id="binSize">bin size: </p>
+
 <div>
 <svg id='main'></svg>
 </div>
 <script>
 'use strict';
+function showBinSize(value){
+  document.getElementById('binSize').innerHTML = value;
+}
 
+//setting
 var width = window.innerWidth;
 var height = 500;
 var margin = 20;
-//scaleX,Y
-var sx = d3.scaleLinear().range([margin, width-margin]);
-var sy = d3.scaleLinear().range([height-margin, margin]);
 
-//colorscale
-var sc = d3.scaleOrdinal(d3.schemeCategory20);
+//scaleX,Y, colorscale
+var sx, sy, sc;
 var mainPlot;
+var lines = [];
+
 
 function init(){
   mainPlot = d3.select('#main')
   .attr('width', width)
   .attr('height',height);
+  //scaleX,Y
+  sx = d3.scaleLinear().range([margin, width-margin]);
+  sy = d3.scaleLinear().range([height-margin, margin]);
+  //colorscale
+  sc = d3.scaleOrdinal(d3.schemeCategory20);
+
 }
 
 
-function add(exp, binsize){
-  d3.json('/exp/'+exp+'_'+binsize+'.json', function(err, res){
-    var chrs = Object.keys(res);
-    var c = res[chrs[0]];//select random chromosome;
-    var bin_edges = c['bin_edges'].slice(0,1000);
-    var hist = c['hist'].slice(0,1000);
-
-    sx.domain([bin_edges[0], bin_edges[bin_edges.length-1]]);
-    sy.domain(d3.extent(hist));
-
-
-
-    var line = d3.line()
-    .curve(d3.curveBundle)
+function Line(histData){
+  var bin_edges = histData['bin_edges'];
+  var hist = histData['hist'];
+  return d3.line()
+    .curve(d3.curveLinear)
+    //.curve(d3.curveBundle)
     .x(function(d,i){return sx(bin_edges[i])})
     .y(function(d){return sy(d)});
+}
 
-    mainPlot.append('path')
+
+function add(exp, binsize, name=''){
+  d3.json('/exp/'+exp+'_'+binsize+'.json', function(err, res){
+    var chrs = Object.keys(res).sort();
+    var c = chrs[1]//select random chromosome;
+    var histData = res[c];
+
+    var bin_edges = histData['bin_edges'];
+    var hist = histData['hist'];
+    var xmin = Math.min(sx.domain()[0], bin_edges[0]);
+
+    //set domain according to first added path
+    if(!sx.isDomainSet){
+      setDomain([bin_edges[0], bin_edges[bin_edges.length-1]],
+                d3.extent(hist));
+      sx.isDomainSet = true;
+    }
+
+    var line = Line(histData);
+
+    var path = mainPlot.append('path')
     .datum(hist)
+    .attr('class', ''+exp + ' bin' + binsize)
     .attr('fill', 'none')
-    .attr('stroke', sc(0))
+    .attr('stroke', sc(lines.length))
     .attr('stroke-width', 3)
     .attr('d', line);
 
-    line = d3.line()
-    .curve(d3.curveLinear)
-    .x(function(d,i){return sx(bin_edges[i])})
-    .y(function(d){return sy(d)});
-
-    mainPlot.append('path')
-    .datum(hist)
-    .attr('d', line)
-    .attr('fill', 'none')
-    .attr('stroke-width', 3)
-    .attr('stroke', sc(1))
-    .attr('opacity', 0.8);
+    lines.push({
+                'binsize':binsize, 
+                'path':path,
+                'eid': exp,
+                'chr': c,
+                'name': name
+              });
 
   });
+
+  
 }
+
+function setDomain(x,y){
+  sx.domain(x);
+  sy.domain(y);
+}
+
+function setBinSize(size){
+  
+}
+
 
 function main(){
   init();
-  add(10838, 20000);
+  add(10838, 10000);
 }
 
 main();
