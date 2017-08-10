@@ -3,7 +3,7 @@
 <script src="https://d3js.org/d3.v4.min.js"></script>
 
 <style>
-#main{
+svg{
   background-color: #eee;
 }
 </style>
@@ -17,109 +17,168 @@
 <p>scale slider</p>
 
 <input id='sBinSize' type='range' min=5 max=20000 step=5 
-       onchange="showBinSize(this.value)"/>
+       onchange="displayBinSize(this.value)"/>
 <p id="binSize">bin size: </p>
 
-<div>
-<svg id='main'></svg>
+<div id='plots'>
 </div>
 <script>
 'use strict';
-function showBinSize(value){
-  document.getElementById('binSize').innerHTML = value;
+function displayBinSize(value){
+  document.getElementById('binSize').innerHTML = 'bin size: ' + value;
 }
 
 //setting
 var width = window.innerWidth;
-var height = 500;
+var height = 100;
 var margin = 20;
 
 //scaleX,Y, colorscale
 var sx, sy, sc;
 var mainPlot;
-var lines = [];
+var exps = [];
 
 
-function init(){
-  mainPlot = d3.select('#main')
+function createSvg(name, chr, binSize){
+  var title = d3.select('div#plots')
+  .append('h4')
+  .text(chr);
+
+  var svg = d3.select('div#plots')
+  .append('svg')
+  .attr('id', name)
   .attr('width', width)
   .attr('height',height);
+  svg.chr = chr;
+  svg.binSize = binSize;
   //scaleX,Y
-  sx = d3.scaleLinear().range([margin, width-margin]);
-  sy = d3.scaleLinear().range([height-margin, margin]);
+  svg.sx = d3.scaleLinear().range([margin, width-margin]);
+  svg.sy = d3.scaleLinear().range([height-margin, margin]);
+  svg.isScaleDomainSet = false;
   //colorscale
-  sc = d3.scaleOrdinal(d3.schemeCategory20);
+  svg.sc = d3.scaleOrdinal(d3.schemeCategory20);
+
+  return svg;
 
 }
 
 
-function Line(histData){
-  var bin_edges = histData['bin_edges'];
-  var hist = histData['hist'];
+function Line(data){
+  var x =data['binEdges'];
+  //let d be the y value of a histogram
   return d3.line()
     .curve(d3.curveLinear)
     //.curve(d3.curveBundle)
-    .x(function(d,i){return sx(bin_edges[i])})
+    .x(function(d,i){return sx( (x[i]+x[i+1])/2) })
     .y(function(d){return sy(d)});
 }
 
 
-function add(exp, binsize, name=''){
-  d3.json('/exp/'+exp+'_'+binsize+'.json', function(err, res){
-    var chrs = Object.keys(res).sort();
-    var c = chrs[1]//select random chromosome;
-    var histData = res[c];
+function drawPath(svg, data){
+  var x = data['binEdges'];
+  var y = data['hist'];
+  
+  if(!svg.isScaleDomainSet){
+    svg.sx.domain(d3.extent(x));
+    svg.sy.domain(d3.extent(y));
+    svg.isScaleDomainSet = true;
+  }
 
-    var bin_edges = histData['bin_edges'];
-    var hist = histData['hist'];
-    var xmin = Math.min(sx.domain()[0], bin_edges[0]);
+  var line = d3.line()
+            .curve(d3.curveLinear)
+            //.curve(d3.curveBundle)
+            .x(function(d,i){return svg.sx( (x[i]+x[i+1])/2) })
+            .y(function(d){return svg.sy(d)});
 
-    //set domain according to first added path
-    if(!sx.isDomainSet){
-      setDomain([bin_edges[0], bin_edges[bin_edges.length-1]],
-                d3.extent(hist));
-      sx.isDomainSet = true;
-    }
+  var path = svg.append('path')
+            .datum(y)
+            .attr('fill', 'none')
+            .attr('stroke', svg.sc(exps.length))
+            .attr('stroke-width', 3)
+            .attr('d', line);
 
-    var line = Line(histData);
+  return path;
+}
 
-    var path = mainPlot.append('path')
-    .datum(hist)
-    .attr('class', ''+exp + ' bin' + binsize)
-    .attr('fill', 'none')
-    .attr('stroke', sc(lines.length))
-    .attr('stroke-width', 3)
-    .attr('d', line);
 
-    lines.push({
-                'binsize':binsize, 
-                'path':path,
-                'eid': exp,
-                'chr': c,
-                'name': name
-              });
+function load(eid, svg, name=''){
+  d3.json('/exp/' + eid + '.json', function(err, res){
+    var cdfs = res;
+    exps.push({
+        'eid': eid,
+        'name': name,
+        'cdfs': cdfs,
+    });
+
+    //plot some chromosome
+    //var c = Object.keys(cdfs)[Math.floor(Math.random()*10)];
+    var cdf = cdfs[svg.chr];
+    var stop = cdf[cdf.length-1][0];
+    var h = histogram(cdf, 0, stop, svg.binSize);
+    
+    drawPath(svg, h);
 
   });
-
-  
 }
+
+function histogram(cdf, start, stop, binSize){
+  
+  //define cdf function through from data
+  function f(x){
+    var res;
+    if(x < cdf[0][0]){
+      res = 0;
+    }else if(x > cdf[cdf.length-1][0]){
+      res = cdf[cdf.length-1][1];
+    }else{
+      //linear search
+      for(var i=0; i<cdf.length-1; i++){
+        if(cdf[i][0] <= x && cdf[i+1][0] > x){
+          res = cdf[i][1];
+          break;
+        }
+      }
+      //TODO binary search
+    }
+    return res;
+  }
+
+  var binEdges = d3.range(start, stop+2*binSize, binSize);
+  var hist = [];
+  for(var i=0; i<binEdges.length-1; i++){
+    var start_i = binEdges[i];
+    var stop_i = binEdges[i+1];
+    var count = f(stop_i) - f(start_i);
+    hist.push(count);
+  }
+
+  return {
+    'binEdges': binEdges,
+    'hist': hist
+  };
+
+}
+
 
 function setDomain(x,y){
   sx.domain(x);
-  sy.domain(y);
+  if(y!==undefined){
+    sy.domain(y);
+  }
 }
 
-function setBinSize(size){
-  
-}
 
 
 function main(){
-  init();
-  add(10838, 10000);
+  var svg = createSvg('main', 'Pf3D7_01_v3', 10000);
+  load(10838, svg);
+  load(10813, svg);
+  load(10841, svg);
 }
 
 main();
+
+
 </script>
 </body>
 </html>

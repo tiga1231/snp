@@ -1,0 +1,8 @@
+"Name","Illumina whole genome shotgun sequencing of genomic DNA paired-end library 'Pond-181703' containing sample 'Plasmodium falciparum P.fal.MLW.2749' from individual 'P.fal.MLW.2749' (SNPs)"
+"Description","Single nucleotide polymorphisms (determined by platypus method)"
+"Genome","Plasmodium falciparum 3D7 (v6, id34326): unmasked"
+"Source","NCBI-SRA"
+"Version","4"
+"Types","VCF,SRA"
+"Notebooks",""
+"Restricted","no"

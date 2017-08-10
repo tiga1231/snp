@@ -1,0 +1,72 @@
+# metadata file written by ibis::part::writeMetaData
+# on Fri Mar 10 06:39:50 2017
+
+BEGIN HEADER
+Name = "load_vcf_SRR609054_1"
+Description = "ardea -d load_vcf_SRR609054_1 -m chr:key,start:unsigned long,stop:unsigned long,type:key,id:text,ref:key,alt:key,qual:double -t load_vcf_SRR609054_1/SRR609054_1.vcf.processed"
+Number_of_columns = 8
+Number_of_rows = 80615
+Timestamp = 1489153190
+State = 1
+index = <binning precision=2/><encoding equality/>
+END HEADER
+
+Begin Column
+name = "alt"
+description = alt = CTTAGTCTC, C, A, T, GA, GCAAT, GGCACAAGGTACGCAAACGTGGATGTG, TG, GACA, ..., TAATAAAGCTTTTGG
+data_type = "CATEGORY"
+minimum = 1
+maximum = 5903
+End Column
+
+Begin Column
+name = "chr"
+description = chr = Pf3D7_02_v3, Pf3D7_03_v3, Pf3D7_04_v3, Pf3D7_05_v3, Pf3D7_06_v3, Pf3D7_07_v3, Pf3D7_08_v3, Pf3D7_09_v3, ..., Pf_M76611
+data_type = "CATEGORY"
+minimum = 1
+maximum = 16
+End Column
+
+Begin Column
+name = "id"
+description = id 
+data_type = "TEXT"
+index=<binning precision=2/><encoding equality/>
+End Column
+
+Begin Column
+name = "qual"
+data_type = "DOUBLE"
+minimum = 5
+maximum = 3000
+End Column
+
+Begin Column
+name = "ref"
+description = ref = GTTAGTCTT, T, G, A, CT, ACAAA, TCCACCAGGTACGCCAACGTGGATATT, TACC, TCAACGACATCA, ..., CACTACT
+data_type = "CATEGORY"
+minimum = 1
+maximum = 5317
+End Column
+
+Begin Column
+name = "start"
+data_type = "ULONG"
+minimum = 3
+maximum = 3290391
+End Column
+
+Begin Column
+name = "stop"
+data_type = "ULONG"
+minimum = 3
+maximum = 3290394
+End Column
+
+Begin Column
+name = "type"
+description = type = unknown, deletion, insertion, (null), 
+data_type = "CATEGORY"
+minimum = 1
+maximum = 4
+End Column
