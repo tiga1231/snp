@@ -1,0 +1,90 @@
+<html>
+<head>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<style>
+#main{
+  background-color: #eee;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Hello!</h1>
+<p>select exp</p>
+<p>select chr or all chr</p>
+<p>scale slider</p>
+<p>binsize</p>
+<div>
+<svg id='main'></svg>
+</div>
+<script>
+'use strict';
+
+var width = window.innerWidth;
+var height = 500;
+var margin = 20;
+//scaleX,Y
+var sx = d3.scaleLinear().range([margin, width-margin]);
+var sy = d3.scaleLinear().range([height-margin, margin]);
+
+//colorscale
+var sc = d3.scaleOrdinal(d3.schemeCategory20);
+var mainPlot;
+
+function init(){
+  mainPlot = d3.select('#main')
+  .attr('width', width)
+  .attr('height',height);
+}
+
+
+function add(exp, binsize){
+  d3.json('/exp/'+exp+'_'+binsize+'.json', function(err, res){
+    var chrs = Object.keys(res);
+    var c = res[chrs[0]];//select random chromosome;
+    var bin_edges = c['bin_edges'].slice(0,1000);
+    var hist = c['hist'].slice(0,1000);
+
+    sx.domain([bin_edges[0], bin_edges[bin_edges.length-1]]);
+    sy.domain(d3.extent(hist));
+
+
+
+    var line = d3.line()
+    .curve(d3.curveBundle)
+    .x(function(d,i){return sx(bin_edges[i])})
+    .y(function(d){return sy(d)});
+
+    mainPlot.append('path')
+    .datum(hist)
+    .attr('fill', 'none')
+    .attr('stroke', sc(0))
+    .attr('stroke-width', 3)
+    .attr('d', line);
+
+    line = d3.line()
+    .curve(d3.curveLinear)
+    .x(function(d,i){return sx(bin_edges[i])})
+    .y(function(d){return sy(d)});
+
+    mainPlot.append('path')
+    .datum(hist)
+    .attr('d', line)
+    .attr('fill', 'none')
+    .attr('stroke-width', 3)
+    .attr('stroke', sc(1))
+    .attr('opacity', 0.8);
+
+  });
+}
+
+function main(){
+  init();
+  add(10838, 20000);
+}
+
+main();
+</script>
+</body>
+</html>

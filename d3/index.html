@@ -1,0 +1,64 @@
+<html>
+<head>
+<script src="https://d3js.org/d3.v4.js"></script>
+<script src="m.js"></script>
+<script src="eids.js"></script>
+<style>
+body{
+    background: #333;
+}
+svg{
+    background: #000;
+}
+button{
+    margin-bottom: 10px;
+}
+</style>
+</head>
+
+<body>
+<!--button id="update">update</button-->
+<div>
+<svg id="plot1"></svg>
+</div>
+
+<script>
+'use strict';
+var w=700,h=700;
+var margin = 30;
+
+var plot1 = d3.select('#plot1')
+.attr('width', w)
+.attr('height', h);
+
+data.sort();
+var flat = [].concat.apply([], data);
+var color = d3.scaleLinear()
+.domain([0,d3.max(flat)])
+.range([d3.hcl(300,70,0),d3.hcl(100,70,100)]);
+//data, eids;
+plot1.selectAll('g.datarow')
+.data(data).enter()
+.append('g')
+.attr('class', 'datarow')
+.attr('transform', function(d,i){
+    var y = margin + (h-2*margin)/eids.length *i;
+    return 'translate(' + 0 + ',' + y + ')';   
+}).each(function(dataRow){
+    var row = d3.select(this);
+    row.selectAll('rect.cell')
+    .data(dataRow).enter()
+    .append('rect')
+    .attr('class', 'cell')
+    .attr('y', 0)
+    .attr('x', function(d,i){
+        return margin + (w-2*margin)/eids.length * i;
+    })
+    .attr('width', function(){return (w-2*margin)/eids.length})
+    .attr('height', function(){return (h-2*margin)/eids.length})
+    .attr('fill',function(d){return color(d)});
+});
+
+</script>
+</body>
+</html>
