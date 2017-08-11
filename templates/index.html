@@ -6,6 +6,9 @@
 svg{
   background-color: #eee;
 }
+input{
+  display: inline-block;
+}
 </style>
 </head>
 
@@ -16,55 +19,90 @@ svg{
 <p>select chr or all chr</p>
 <p>scale slider</p>
 
-<input id='sBinSize' type='range' min=5 max=20000 step=5 
-       onchange="displayBinSize(this.value)"/>
-<p id="binSize">bin size: </p>
-
 <div id='plots'>
 </div>
 <script>
 'use strict';
-function displayBinSize(value){
-  document.getElementById('binSize').innerHTML = 'bin size: ' + value;
+function updateBinSize(name, value, id){
+  document.getElementById(id).innerHTML = value;
+
+  var svg = svgs[name];
+  setBinSize(svg, value);
 }
 
 //setting
-var width = window.innerWidth;
+var width = window.innerWidth - 50;
 var height = 100;
 var margin = 20;
 
 //scaleX,Y, colorscale
 var sx, sy, sc;
 var mainPlot;
-var exps = [];
+var exps = {};
+var svgs = {};
 
 
 function createSvg(name, chr, binSize){
-  var title = d3.select('div#plots')
-  .append('h4')
+  var div = d3.select('div#plots')
+  .append('div')
+  .attr('id', name);
+
+  var title = div.append('h4')
   .text(chr);
+
+  var sBinSize = div.append('input')
+  .attr('type', 'range')
+  .attr('min', 5)
+  .attr('max', 20000)
+  .attr('step', 5)
+
+  var spanBinSize = div.append('span')
+  .attr('id', 'binsize_'+ name);
+
+  //<input id='sBinSize' type='range' min=5 max=20000 step=5 
+  //       onchange=""/>
+  //<span id="binSize"></span>
 
   var svg = d3.select('div#plots')
   .append('svg')
   .attr('id', name)
   .attr('width', width)
   .attr('height',height);
+
+  sBinSize
+  .attr('onchange', 'updateBinSize("' + name + '", this.value, "binsize_'+name+'")');
+
   svg.chr = chr;
   svg.binSize = binSize;
+  svg.eids = [];
   //scaleX,Y
   svg.sx = d3.scaleLinear().range([margin, width-margin]);
   svg.sy = d3.scaleLinear().range([height-margin, margin]);
+
+  svg.ax = d3.axisBottom(sx);
+  svg.ay = d3.axisLeft(sy).ticks(2);
+
   svg.isScaleDomainSet = false;
   //colorscale
   svg.sc = d3.scaleOrdinal(d3.schemeCategory20);
 
+  //use current properties (sx, sy, binsize, etc) to redraw
+  svg.redraw = function(){
+    svg.selectAll('path.histogram').remove();
+    var eids = svg.eids.slice();
+    svg.eids = [];
+    for(var i=0; i<eids.length; i++){
+      load(eids[i], svg);
+    }
+  }
+  svgs[name] = svg;
   return svg;
 
 }
 
 
 function Line(data){
-  var x =data['binEdges'];
+  var x = data['binEdges'];
   //let d be the y value of a histogram
   return d3.line()
     .curve(d3.curveLinear)
@@ -75,13 +113,31 @@ function Line(data){
 
 
 function drawPath(svg, data){
+  if(svg.pathCount === undefined){
+    svg.pathCount = 1;
+  }else{
+    svg.pathCount++;
+  }
   var x = data['binEdges'];
   var y = data['hist'];
   
   if(!svg.isScaleDomainSet){
     svg.sx.domain(d3.extent(x));
     svg.sy.domain(d3.extent(y));
+    
+    svg.ax.scale(svg.sx);
+    svg.ay.scale(svg.sy);
+
+    svg.append("g")
+    .attr('transform', 'translate(0, '+ (height-margin) + ')')
+    .call(svg.ax);
+
+    svg.append("g")
+    .attr('transform', 'translate(' + margin + ',0)')
+    .call(svg.ay);
+
     svg.isScaleDomainSet = true;
+
   }
 
   var line = d3.line()
@@ -92,33 +148,50 @@ function drawPath(svg, data){
 
   var path = svg.append('path')
             .datum(y)
+            .attr('class', 'histogram')
             .attr('fill', 'none')
-            .attr('stroke', svg.sc(exps.length))
+            .attr('stroke', svg.sc(svg.eids.length))
             .attr('stroke-width', 3)
             .attr('d', line);
+
+
 
   return path;
 }
 
 
 function load(eid, svg, name=''){
-  d3.json('/exp/' + eid + '.json', function(err, res){
-    var cdfs = res;
-    exps.push({
-        'eid': eid,
-        'name': name,
-        'cdfs': cdfs,
-    });
+  if(exps[eid]){
 
-    //plot some chromosome
-    //var c = Object.keys(cdfs)[Math.floor(Math.random()*10)];
+    var cdfs = exps[eid]['cdfs'];
     var cdf = cdfs[svg.chr];
     var stop = cdf[cdf.length-1][0];
     var h = histogram(cdf, 0, stop, svg.binSize);
-    
     drawPath(svg, h);
+    svg.eids.push(eid);
 
-  });
+
+  }else{
+    console.log(eid);
+    d3.json('/exp/' + eid + '.json', function(err, res){
+      var cdfs = res;
+      
+      exps[eid] = {
+          'name': name,
+          'cdfs': cdfs,
+      };
+
+      //plot some chromosome
+      //var c = Object.keys(cdfs)[Math.floor(Math.random()*10)];
+      var cdf = cdfs[svg.chr];
+      var stop = cdf[cdf.length-1][0];
+      var h = histogram(cdf, 0, stop, svg.binSize);
+      drawPath(svg, h);
+      svg.eids.push(eid);
+
+
+    });
+  }
 }
 
 function histogram(cdf, start, stop, binSize){
@@ -160,20 +233,34 @@ function histogram(cdf, start, stop, binSize){
 }
 
 
-function setDomain(x,y){
-  sx.domain(x);
-  if(y!==undefined){
-    sy.domain(y);
-  }
+function setBinSize(svg, binSize){
+  svg.binSize = binSize;
+  svg.redraw();
+
 }
 
-
+function setDomain(svg, dx, dy){
+  svg.sx.domain(dx);
+  if(dy !== undefined){
+    svg.sy.domain(dy);
+  }
+  svg.redraw();
+}
 
 function main(){
-  var svg = createSvg('main', 'Pf3D7_01_v3', 10000);
+  var svg = createSvg('firstPlot', 'Pf3D7_01_v3', 10000);
+  //load data and draw
   load(10838, svg);
   load(10813, svg);
   load(10841, svg);
+
+  /*
+  var svg2 = createSvg('main', 'Pf3D7_02_v3', 1000);
+  load(10838, svg2);
+  load(10813, svg2);
+  load(10841, svg2);
+  */
+
 }
 
 main();
