@@ -51,6 +51,7 @@ def test_snp_density():
     density = len(start) / float(start.max())
     print density
 
+
 def test_cdf():
     df = getRawData()
     df = df[df['chr']==df['chr'][0]]
@@ -61,11 +62,48 @@ def test_cdf():
     cdf = np.array(cdf)
     plt.step(cdf[:,0], cdf[:,1], where = 'mid')
     plt.show()
+
     
 def test_cdfs():
     cdfs = getCdfs('10838')
     print cdfs.keys()
 
+def test_scatterPlot():
+    df = getRawData(EXP_PATH_PREFIX + '10838')
+    df = df[df['chr']==df['chr'][0]]
+    start1 = df['start']
+    
+    df = getRawData(EXP_PATH_PREFIX + '10813')
+    df = df[df['chr']==df['chr'][0]]
+    start2 = df['start']
+    
+    df = getRawData(EXP_PATH_PREFIX + '10841')
+    df = df[df['chr']==df['chr'][0]]
+    start3 = df['start']
+    
+
+    h1 = np.histogram(start1, bins=np.arange(0, np.max(start1), 20000))
+    h2 = np.histogram(start2, bins=np.arange(0, np.max(start2), 20000))
+    h3 = np.histogram(start3, bins=np.arange(0, np.max(start3), 20000))
+
+    cm = plt.cm.get_cmap('viridis')
+
+
+    plt.subplot(332)
+    plt.plot(h2[0], h1[0], c='gray', alpha=0.1)
+    plt.scatter(h2[0], h1[0], c=h1[1][:-1], cmap=cm)
+    
+    plt.subplot(333)
+    plt.plot(h3[0], h1[0], c='gray', alpha=0.1)
+    plt.scatter(h3[0], h1[0], c=h1[1][:-1], cmap=cm)
+    
+    plt.subplot(336)
+    plt.plot(h3[0], h2[0], c='gray', alpha=0.1)
+    plt.scatter(h3[0], h2[0], c=h1[1][:-1], cmap=cm)
+    
+    
+    plt.show()
+
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
-    test_cdfs()
+    test_scatterPlot()

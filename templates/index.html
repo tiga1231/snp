@@ -15,9 +15,13 @@ input{
 <body>
 
 <h1>Hello!</h1>
-<p>select exp</p>
-<p>select chr or all chr</p>
-<p>scale slider</p>
+<h2>TODO</h2>
+<ol>
+<li>select eid</li>
+<li>select chr or all chr</li>
+<li>scale slider</li>
+</ol>
+
 
 <div id='plots'>
 </div>
@@ -43,13 +47,21 @@ var svgs = {};
 
 
 function createSvg(name, chr, binSize){
+
+  //div of a plot
   var div = d3.select('div#plots')
   .append('div')
-  .attr('id', name);
+  .attr('id', 'div-' + name);
 
-  var title = div.append('h4')
+  //title
+  div.append('h4')
   .text(chr);
 
+  //slider label
+  div.append('span')
+  .text('bin size:');
+
+  //bin size slider
   var sBinSize = div.append('input')
   .attr('type', 'range')
   .attr('min', 5)
@@ -63,8 +75,7 @@ function createSvg(name, chr, binSize){
   //       onchange=""/>
   //<span id="binSize"></span>
 
-  var svg = d3.select('div#plots')
-  .append('svg')
+  var svg = div.append('svg')
   .attr('id', name)
   .attr('width', width)
   .attr('height',height);
@@ -129,16 +140,19 @@ function drawPath(svg, data){
     svg.ay.scale(svg.sy);
 
     svg.append("g")
+    .attr('class', 'axis x')
     .attr('transform', 'translate(0, '+ (height-margin) + ')')
-    .call(svg.ax);
 
     svg.append("g")
-    .attr('transform', 'translate(' + margin + ',0)')
-    .call(svg.ay);
+    .attr('class', 'axis y')
+    .attr('transform', 'translate(' + (width-margin) + ',0)')
+
+    svg.select('.axis.x').call(svg.ax);
+    svg.select('.axis.y').call(svg.ay);
 
     svg.isScaleDomainSet = true;
 
-  }
+  }  
 
   var line = d3.line()
             .curve(d3.curveLinear)
@@ -170,27 +184,22 @@ function load(eid, svg, name=''){
     drawPath(svg, h);
     svg.eids.push(eid);
 
-
   }else{
-    console.log(eid);
+    console.log('loading ' + eid);
+    
     d3.json('/exp/' + eid + '.json', function(err, res){
       var cdfs = res;
-      
       exps[eid] = {
           'name': name,
           'cdfs': cdfs,
       };
-
-      //plot some chromosome
-      //var c = Object.keys(cdfs)[Math.floor(Math.random()*10)];
       var cdf = cdfs[svg.chr];
       var stop = cdf[cdf.length-1][0];
       var h = histogram(cdf, 0, stop, svg.binSize);
       drawPath(svg, h);
       svg.eids.push(eid);
-
-
     });
+
   }
 }
 
@@ -236,15 +245,20 @@ function histogram(cdf, start, stop, binSize){
 function setBinSize(svg, binSize){
   svg.binSize = binSize;
   svg.redraw();
-
 }
 
 function setDomain(svg, dx, dy){
-  svg.sx.domain(dx);
-  if(dy !== undefined){
+  if(dx){
+    svg.sx.domain(dx);
+  }
+  if(dy){
     svg.sy.domain(dy);
   }
+  svg.select('.axis.x').call(svg.ax);
+  svg.select('.axis.y').call(svg.ay);
+
   svg.redraw();
+  
 }
 
 function main(){
